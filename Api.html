@@ -1,0 +1,295 @@
+<!-- Google Map Place API In js -->
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDUc3o4JH55VGQm68ueEYzSyogIf0BVDEg&libraries=places&callback=initMap" async defer></script>
+<div class="map-container" 
+     data-lat="{{wf {&quot;path&quot;:&quot;lat&quot;,&quot;type&quot;:&quot;PlainText&quot;\} }}" 
+     data-lng="{{wf {&quot;path&quot;:&quot;long&quot;,&quot;type&quot;:&quot;PlainText&quot;\} }}" 
+     data-name="{{wf {&quot;path&quot;:&quot;name&quot;,&quot;type&quot;:&quot;PlainText&quot;\} }}" 
+     data-place-id="{{wf {&quot;path&quot;:&quot;place-id&quot;,&quot;type&quot;:&quot;PlainText&quot;\} }}"
+     style="height: 500px; width: 100%;">
+</div>
+
+<script>
+    function initMap() {
+        document.querySelectorAll('.map-container').forEach(mapContainer => {
+            const lat = parseFloat(mapContainer.dataset.lat);
+            const lng = parseFloat(mapContainer.dataset.lng);
+            const name = mapContainer.dataset.name;
+            const placeId = mapContainer.dataset.placeId;
+
+            const location = { lat: lat, lng: lng };
+
+            const map = new google.maps.Map(mapContainer, {
+                center: location,
+                zoom: 8
+            });
+
+            const marker = new google.maps.Marker({
+                position: location,
+                map: map,
+                title: name
+            });
+             const nameDiv = document.createElement('div');
+            nameDiv.innerHTML = name;
+            nameDiv.style.position = 'absolute';
+            nameDiv.style.background = 'white';
+            nameDiv.style.padding = '5px';
+            nameDiv.style.border = '1px solid black';
+            nameDiv.style.fontWeight = 'bold';
+
+            const overlay = new google.maps.OverlayView();
+            overlay.onAdd = function () {
+                const layer = document.createElement('div');
+                layer.style.borderStyle = 'none';
+                layer.style.borderWidth = '0px';
+                layer.style.position = 'absolute';
+                layer.appendChild(nameDiv);
+                const panes = this.getPanes();
+                panes.overlayLayer.appendChild(layer);
+
+                overlay.draw = function () {
+                    const projection = this.getProjection();
+                    const position = projection.fromLatLngToDivPixel(location);
+                    layer.style.left = position.x + 'px';
+                    layer.style.top = position.y + 'px';
+                };
+            };
+            overlay.setMap(map);
+
+            const service = new google.maps.places.PlacesService(map);
+            service.getDetails({
+                placeId: placeId,
+                fields: ['name', 'geometry', 'formatted_address', 'formatted_phone_number', 'website', 'rating', 'reviews']
+            }, function(place, status) {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    // Populate attraction details
+                    const attractionDetailsContainer = document.querySelector('.attraction-details');
+                    attractionDetailsContainer.querySelector('.attraction-name').textContent = place.name;
+                    attractionDetailsContainer.querySelector('.attraction-address').textContent = place.formatted_address;
+                    
+                  const phoneElement = attractionDetailsContainer.querySelector('.attraction-phone');
+                  if (place.formatted_phone_number) {
+                      phoneElement.innerHTML = `<a href="tel:${place.formatted_phone_number.replace(/\s+/g, '')}" style="color: #325166;text-decoration: underline;font-weight:500;">${place.formatted_phone_number}</a>`;
+                  } else {
+                      phoneElement.textContent = 'Not available';
+                  }
+
+                  const websiteElement = attractionDetailsContainer.querySelector('.attraction-website');
+                  if (place.website) {
+                      websiteElement.innerHTML = `<a href="${place.website}" target="_blank" style="color: #325166;text-decoration: underline;font-weight:500;">${place.website}</a>`;
+                  } else {
+                      websiteElement.textContent = 'Not available';
+                  }
+
+                    // Display overall rating as a single star icon with rating value
+                    const ratingElement = attractionDetailsContainer.querySelector('.attraction-rating');
+                    const overallRating = place.rating || 0;
+                    ratingElement.innerHTML = `
+                        <div class="overall-rating">
+                            <span class="star-icon">⭐</span>${overallRating.toFixed(1)}
+                        </div>
+                    `;
+                    // Populate reviews
+                    const reviewsContainer = document.querySelector('.reviews-container');
+                    reviewsContainer.innerHTML = ''; // Clear previous reviews
+
+                    if (place.reviews) {
+                        place.reviews.forEach(review => {
+                            const reviewElement = document.createElement('div');
+                            reviewElement.classList.add('review-item');
+                            reviewElement.innerHTML = `
+                                <p class="paragraph-63">${review.text}</p>
+                                <div class="text-block-42"><strong>${'⭐'.repeat(Math.round(review.rating))}</strong></div>
+                                <div class="div-block-153">
+                                    <img src="${review.profile_photo_url || 'default-avatar.png'}" loading="lazy" width="42" alt="">
+                                    <div>
+                                        <div><strong>${review.author_name}</strong></div>
+                                        <div>${new Date(review.time * 1000).toLocaleDateString()}</div>
+                                    </div>
+                                </div>
+                            `;
+                            reviewsContainer.appendChild(reviewElement);
+                        });
+                    } else {
+                        reviewsContainer.innerHTML = '<p>No reviews available</p>';
+                    }
+                }
+            });
+        });
+    }
+
+    // Initialize map on page load
+    document.addEventListener('DOMContentLoaded', initMap);
+</script>
+
+
+<!-- =============================================================================
+ *******************************************************************************************************
+Display the review data 
+-->
+
+ <script>
+    function injectReviewStyles() {
+        // Inject CSS into the document
+        const style = document.createElement('style');
+        style.innerHTML = `
+            /* CSS for Reviews Container and Items */
+            .reviews-container {
+                display: grid!important;
+                grid-template-columns: repeat(2, 1fr); /* Two columns */
+                gap: 20px;
+                margin-top: 20px; /* Space above the reviews */
+            }
+            .att-phn{
+            color:#325166;
+            }
+
+            .review-item {
+                padding: 15px;
+            }
+
+            .paragraph-63 {
+                margin: 0;
+                font-size: 14px;
+            }
+
+            .text-block-42 {
+                margin: 5px 0;
+                font-size: 16px;
+            }
+
+            .div-block-153 {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .div-block-153 img {
+                border-radius: 50%;
+            }
+
+            .div-block-153 div {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .div-block-153 div div {
+                font-size: 14px;
+            }
+
+            .overall-rating {
+                font-size: 15px;
+                display: flex;
+                align-items: center;
+                font-weight: 700;
+            }
+
+            .star-icon {
+                font-size: 14px;
+                color: gold;
+                margin-right: 7px;
+            }
+            
+            
+            /* Mobile-friendly styles */
+    @media (max-width: 768px) {
+        .reviews-container {
+            grid-template-columns: 1fr; /* Single column on small screens */
+        }
+        .review-item {
+            padding: 10px;
+        }
+        .paragraph-63 {
+            font-size: 15px;
+        }
+        .text-block-42 {
+            font-size: 14px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .review-item {
+            padding: 8px;
+        }
+        .paragraph-63 {
+            font-size: 15px;
+        }
+        .text-block-42 {
+            font-size: 15px;
+        }
+        .div-block-153 img {
+            width: 35px;
+        }
+        .div-block-153 div div {
+            font-size: 12px;
+        }
+        .overall-rating {
+            font-size: 14px;
+        }
+        .star-icon {
+            font-size: 18px;
+        }
+      }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function populateReviews(reviews) {
+        const reviewsContainer = document.querySelector('.reviews-container');
+        reviewsContainer.innerHTML = ''; // Clear previous reviews
+
+        if (reviews && reviews.length) {
+            reviews.forEach(review => {
+                const reviewElement = document.createElement('div');
+                reviewElement.classList.add('review-item');
+                reviewElement.innerHTML = `
+                    <p class="paragraph-63">${review.text}</p>
+                    <div class="text-block-42"><strong>${'⭐'.repeat(Math.round(review.rating))}</strong></div>
+                    <div class="div-block-153">
+                        <img src="${review.profile_photo_url || 'default-avatar.png'}" loading="lazy" width="42" alt="">
+                        <div>
+                            <div><strong>${review.author_name}</strong></div>
+                            <div>${new Date(review.time * 1000).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                `;
+                reviewsContainer.appendChild(reviewElement);
+            });
+        } else {
+            reviewsContainer.innerHTML = '<p>No reviews available</p>';
+        }
+    }
+
+    function updateOverallRating(rating) {
+        const ratingElement = document.querySelector('.overall-rating');
+        const overallRating = rating || 0;
+        ratingElement.innerHTML = `
+            <span class="star-icon">⭐</span>${overallRating.toFixed(1)}
+        `;
+    }
+
+    function fetchReviewsFromAPI() {
+        // Replace with your actual API endpoint
+        const apiUrl = 'https://example.com/api/reviews';
+
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                const reviews = data.reviews; // Adjust based on your API response structure
+                const overallRating = data.overall_rating; // Adjust based on your API response structure
+                populateReviews(reviews);
+                updateOverallRating(overallRating);
+            })
+            .catch(error => {
+                console.error('Error fetching reviews:', error);
+                // Optionally, handle the error and show a message to the user
+            });
+    }
+
+    // Initialize
+    injectReviewStyles();
+    document.addEventListener('DOMContentLoaded', fetchReviewsFromAPI);
+</script>
+
+<div class="overall-rating"></div>
+<div class="reviews-container"></div>
